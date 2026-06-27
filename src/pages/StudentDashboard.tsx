@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   Calendar,
@@ -24,8 +24,14 @@ import {
 type LeaderboardFilter = 'global' | 'department' | 'monthly'
 
 export function StudentDashboard() {
-  const { logout } = useAuth()
-  const student = DEMO_STUDENT
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const student = {
+    ...DEMO_STUDENT,
+    name: user?.name ?? DEMO_STUDENT.name,
+    prn: user?.identifier ?? DEMO_STUDENT.prn,
+    avatar: user?.picture ?? DEMO_STUDENT.avatar,
+  }
   const [filter, setFilter] = useState<LeaderboardFilter>('global')
 
   const isInDanger = student.eventsCompleted < student.eventsRequired
@@ -257,7 +263,10 @@ export function StudentDashboard() {
             Scan Event QR
           </Link>
           <button
-            onClick={logout}
+            onClick={() => {
+              logout()
+              navigate('/login')
+            }}
             className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-400 transition-colors"
           >
             <LogOut className="h-4 w-4" />

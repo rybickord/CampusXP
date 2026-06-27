@@ -5,3 +5,4 @@ qrcode[pil]>=8.0
 python-dateutil>=2.9
 django-allauth>=1.0
 google-auth>=2.0
+python-dotenv>=1.0

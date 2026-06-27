@@ -1,17 +1,26 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+// In dev, Vite proxies /api → Django (see vite.config.ts). Override with VITE_API_URL if needed.
+const API_BASE = import.meta.env.VITE_API_URL ?? ''
 
 async function post<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  return res.json()
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    return res.json()
+  } catch {
+    return { ok: false, error: 'Network error' } as T
+  }
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`)
-  return res.json()
+  try {
+    const res = await fetch(`${API_BASE}${path}`)
+    return res.json()
+  } catch {
+    return { ok: false, error: 'Network error' } as T
+  }
 }
 
 export interface StudentLoginResponse {

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   CheckCircle,
   Download,
@@ -29,7 +30,12 @@ type Tab = 'events' | 'exemptions' | 'reports'
 
 export function FacultyPortal() {
   const { logout, user } = useAuth()
-  const faculty = DEMO_FACULTY
+  const navigate = useNavigate()
+  const faculty = {
+    ...DEMO_FACULTY,
+    name: user?.name ?? DEMO_FACULTY.name,
+    staffId: user?.identifier ?? DEMO_FACULTY.staffId,
+  }
   const [tab, setTab] = useState<Tab>('events')
 
   const [eventName, setEventName] = useState('')
@@ -113,7 +119,10 @@ export function FacultyPortal() {
             </p>
           </div>
           <button
-            onClick={logout}
+            onClick={() => {
+              logout()
+              navigate('/login')
+            }}
             className="flex items-center gap-2 self-start text-sm text-gray-500 hover:text-red-400 transition-colors"
           >
             <LogOut className="h-4 w-4" />

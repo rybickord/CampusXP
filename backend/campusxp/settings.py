@@ -4,6 +4,15 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load backend/.env (GOOGLE_CLIENT_ID, etc.)
+_env_file = BASE_DIR / '.env'
+if _env_file.exists():
+    for _line in _env_file.read_text(encoding='utf-8').splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith('#') and '=' in _line:
+            _key, _, _val = _line.partition('=')
+            os.environ.setdefault(_key.strip(), _val.strip())
+
 SECRET_KEY = 'campusxp-dev-key-change-in-production'
 DEBUG = True
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
