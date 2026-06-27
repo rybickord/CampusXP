@@ -7,13 +7,14 @@ export interface AuthUser {
   id: string
   name: string
   identifier: string
-  email: string
+  email?: string
   picture?: string
 }
 
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
+  login: (role: UserRole, identifier: string, password: string) => Promise<boolean>
   loginWithGoogle: (role: UserRole, credential: string) => Promise<boolean>
   logout: () => void
 }
@@ -44,6 +45,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const persistUser = (next: AuthUser) => {
     setUser(next)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  }
+
+  const login = async (role: UserRole, identifier: string, _password: string) => {
+    const id = identifier.trim()
+    if (!id) return false
+
+    if (role === 'student') {
+      const res = await api.studentLogin(id)
+      if (!res.ok) return false
+      persistUser({
+        role: 'student',
+        id: res.prn,
+        name: res.name,
+        identifier: res.prn,
+      })
+    } else {
+      const res = await api.facultyLogin(id)
+      if (!res.ok) return false
+      persistUser({
+        role: 'faculty',
+        id: res.staff_id,
+        name: res.name,
+        identifier: res.staff_id,
+      })
+    }
+    return true
   }
 
   const loginWithGoogle = async (role: UserRole, credential: string) => {
@@ -80,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   )

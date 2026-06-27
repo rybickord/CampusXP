@@ -72,7 +72,7 @@ export const api = {
     post<StudentLoginResponse>('/api/auth/student/', { prn }),
 
   facultyLogin: (staff_id: string) =>
-    post<{ ok: boolean; staff_id: string; name: string }>('/api/auth/faculty/', { staff_id }),
+    post<{ ok: boolean; role: 'faculty'; staff_id: string; name: string }>('/api/auth/faculty/', { staff_id }),
 
   createEvent: (payload: {
     staff_id: string
