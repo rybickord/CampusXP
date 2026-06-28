@@ -2,9 +2,12 @@ import base64
 import io
 
 import qrcode
+from django.db import models
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from rest_framework import status
@@ -12,7 +15,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from .engine import calculate_event_xp, evaluate_danger_zone, LEVEL_BASE_XP, ROLE_MULTIPLIER
-from .models import Event, ExemptionRequest, Faculty, Student
+from .models import CampusEvent, Event, ExemptionRequest, Faculty, Student
 from .services import (
     approve_exemption,
     create_event,
@@ -55,12 +58,14 @@ def faculty_login_page(request):
 @api_view(['POST'])
 def api_student_login(request):
     prn = request.data.get('prn', '').strip()
-    if not prn:
-        return Response({'ok': False, 'error': 'prn required'}, status=status.HTTP_400_BAD_REQUEST)
-    student, _ = Student.objects.get_or_create(
-        prn=prn,
-        defaults={'name': 'Demo Student', 'department': 'BCOM'},
-    )
+    password = request.data.get('password', '')
+    if not prn or not password:
+        return Response({'ok': False, 'error': 'prn and password required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    student = Student.objects.filter(prn=prn).first()
+    if not student or not student.password_hash or not check_password(password, student.password_hash):
+        return Response({'ok': False, 'error': 'Invalid PRN or password'}, status=status.HTTP_401_UNAUTHORIZED)
+
     danger = evaluate_danger_zone(student.events_count, student.events_required)
     rank = get_student_rank(student)
     return Response({
@@ -80,13 +85,43 @@ def api_student_login(request):
 @api_view(['POST'])
 def api_faculty_login(request):
     staff_id = request.data.get('staff_id', '').strip()
-    if not staff_id:
-        return Response({'ok': False, 'error': 'staff_id required'}, status=status.HTTP_400_BAD_REQUEST)
-    faculty, _ = Faculty.objects.get_or_create(
-        staff_id=staff_id,
-        defaults={'name': 'Demo Faculty', 'department': 'Computer Applications'},
-    )
+    password = request.data.get('password', '')
+    if not staff_id or not password:
+        return Response({'ok': False, 'error': 'staff_id and password required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    faculty = Faculty.objects.filter(staff_id=staff_id).first()
+    if not faculty or not faculty.password_hash or not check_password(password, faculty.password_hash):
+        return Response({'ok': False, 'error': 'Invalid staff ID or password'}, status=status.HTTP_401_UNAUTHORIZED)
+
     return Response({'ok': True, 'role': 'faculty', 'staff_id': faculty.staff_id, 'name': faculty.name})
+
+
+@api_view(['POST'])
+def api_faculty_signup(request):
+    name = request.data.get('name', '').strip()
+    email = request.data.get('email', '').strip()
+    password = request.data.get('password', '')
+    college_name = request.data.get('college_name', '').strip()
+
+    if not name or not email or not password or not college_name:
+        return Response({'ok': False, 'error': 'name, email, password, and college_name are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if Faculty.objects.filter(email=email).exists():
+        return Response({'ok': False, 'error': 'Email already registered'}, status=status.HTTP_400_BAD_REQUEST)
+
+    staff_id = f'FAC-{get_random_string(6).upper()}'
+    while Faculty.objects.filter(staff_id=staff_id).exists():
+        staff_id = f'FAC-{get_random_string(6).upper()}'
+
+    faculty = Faculty.objects.create(
+        staff_id=staff_id,
+        name=name,
+        department=college_name,
+        email=email,
+        password_hash=make_password(password),
+    )
+
+    return Response({'ok': True, 'role': 'faculty', 'staff_id': faculty.staff_id, 'name': faculty.name, 'email': faculty.email})
 
 
 @api_view(['POST'])
@@ -165,6 +200,19 @@ def api_google_login(request):
         'name': faculty.name,
         'email': email,
         'picture': idinfo.get('picture', ''),
+    })
+
+
+@api_view(['GET'])
+def api_landing_stats(request):
+    students = Student.objects.filter(semester_locked=False)
+    events = CampusEvent.objects.count()
+    total_xp = Student.objects.aggregate(total_xp=models.Sum('total_xp'))['total_xp'] or 0
+
+    return Response({
+        'students': students.count(),
+        'events': events,
+        'xp_awarded': int(total_xp),
     })
 
 

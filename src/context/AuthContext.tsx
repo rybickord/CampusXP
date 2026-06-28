@@ -15,6 +15,7 @@ interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
   login: (role: UserRole, identifier: string, password: string) => Promise<boolean>
+  signup: (name: string, email: string, password: string, collegeName: string) => Promise<boolean>
   loginWithGoogle: (role: UserRole, credential: string) => Promise<boolean>
   logout: () => void
 }
@@ -47,12 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   }
 
-  const login = async (role: UserRole, identifier: string, _password: string) => {
+  const login = async (role: UserRole, identifier: string, password: string) => {
     const id = identifier.trim()
-    if (!id) return false
+    const pass = password.trim()
+    if (!id || !pass) return false
 
     if (role === 'student') {
-      const res = await api.studentLogin(id)
+      const res = await api.studentLogin(id, pass)
       if (!res.ok) return false
       persistUser({
         role: 'student',
@@ -61,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         identifier: res.prn,
       })
     } else {
-      const res = await api.facultyLogin(id)
+      const res = await api.facultyLogin(id, pass)
       if (!res.ok) return false
       persistUser({
         role: 'faculty',
@@ -70,6 +72,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         identifier: res.staff_id,
       })
     }
+    return true
+  }
+
+  const signup = async (name: string, email: string, password: string, collegeName: string) => {
+    const res = await api.facultySignup({ name, email, password, college_name: collegeName })
+    if (!res.ok) return false
+    persistUser({
+      role: 'faculty',
+      id: res.staff_id,
+      name: res.name,
+      identifier: res.staff_id,
+      email: res.email,
+    })
     return true
   }
 
@@ -107,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   )

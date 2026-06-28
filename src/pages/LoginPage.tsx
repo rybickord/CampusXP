@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 import { GraduationCap, Lock, Shield } from 'lucide-react'
 import { GridBackground } from '../components/layout/GridBackground'
 import { TrustBar } from '../components/layout/TrustBar'
@@ -10,15 +9,17 @@ import type { UserRole } from '../data/mockData'
 
 export function LoginPage() {
   const [portal, setPortal] = useState<UserRole>('student')
+  const [showFacultySignup, setShowFacultySignup] = useState(false)
   const [prn, setPrn] = useState('')
   const [staffId, setStaffId] = useState('')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [collegeName, setCollegeName] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const { login, loginWithGoogle } = useAuth()
+  const { login, signup } = useAuth()
   const navigate = useNavigate()
-
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
   const goToPortal = (role: UserRole) => {
     navigate(role === 'student' ? '/dashboard' : '/faculty')
@@ -28,35 +29,22 @@ export function LoginPage() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
-    const identifier = portal === 'student' ? prn : staffId
     try {
-      const ok = await login(portal, identifier, password)
-      if (ok) {
-        goToPortal(portal)
+      if (portal === 'faculty' && showFacultySignup) {
+        const ok = await signup(name, email, password, collegeName)
+        if (ok) {
+          goToPortal('faculty')
+        } else {
+          setError('Faculty signup failed. Check your inputs and try again.')
+        }
       } else {
-        setError('Invalid credentials. Check your ID and try again.')
-      }
-    } catch {
-      setError('Could not reach the server. Start the Django backend and try again.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleGoogleSuccess = async (response: CredentialResponse) => {
-    if (!response.credential) {
-      setError('Google sign-in failed. Please try again.')
-      return
-    }
-
-    setError('')
-    setSubmitting(true)
-    try {
-      const ok = await loginWithGoogle(portal, response.credential)
-      if (ok) {
-        goToPortal(portal)
-      } else {
-        setError('Google sign-in failed. Check that OAuth is configured on the server.')
+        const identifier = portal === 'student' ? prn : staffId
+        const ok = await login(portal, identifier, password)
+        if (ok) {
+          goToPortal(portal)
+        } else {
+          setError('Invalid credentials. Check your ID and try again.')
+        }
       }
     } catch {
       setError('Could not reach the server. Start the Django backend and try again.')
@@ -129,6 +117,66 @@ export function LoginPage() {
                   className="w-full rounded-lg border border-charcoal-300 bg-charcoal px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-neon/50 focus:outline-none focus:ring-1 focus:ring-neon/30 disabled:opacity-50"
                 />
               </div>
+            ) : showFacultySignup ? (
+              <>
+                <div>
+                  <label
+                    htmlFor="name"
+                    className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-500"
+                  >
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter your full name"
+                    required
+                    disabled={submitting}
+                    className="w-full rounded-lg border border-charcoal-300 bg-charcoal px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-neon/50 focus:outline-none focus:ring-1 focus:ring-neon/30 disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-500"
+                  >
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="faculty@college.edu"
+                    required
+                    disabled={submitting}
+                    className="w-full rounded-lg border border-charcoal-300 bg-charcoal px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-neon/50 focus:outline-none focus:ring-1 focus:ring-neon/30 disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="college_name"
+                    className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-500"
+                  >
+                    College Name
+                  </label>
+                  <input
+                    type="text"
+                    id="college_name"
+                    name="college_name"
+                    value={collegeName}
+                    onChange={(e) => setCollegeName(e.target.value)}
+                    placeholder="Enter your college name"
+                    required
+                    disabled={submitting}
+                    className="w-full rounded-lg border border-charcoal-300 bg-charcoal px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-neon/50 focus:outline-none focus:ring-1 focus:ring-neon/30 disabled:opacity-50"
+                  />
+                </div>
+              </>
             ) : (
               <div>
                 <label
@@ -165,6 +213,7 @@ export function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                required
                 disabled={submitting}
                 className="w-full rounded-lg border border-charcoal-300 bg-charcoal px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-neon/50 focus:outline-none focus:ring-1 focus:ring-neon/30 disabled:opacity-50"
               />
@@ -173,38 +222,30 @@ export function LoginPage() {
             {error && <p className="text-xs text-red-400">{error}</p>}
 
             <Button type="submit" size="lg" showArrow disabled={submitting}>
-              Enter Dashboard
+              {portal === 'faculty' && showFacultySignup ? 'Create Faculty Account' : 'Enter Dashboard'}
             </Button>
           </form>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-charcoal-300" />
+          {portal === 'faculty' && (
+            <div className="mt-4 text-center text-xs text-gray-400">
+              {showFacultySignup ? (
+                <button
+                  type="button"
+                  onClick={() => setShowFacultySignup(false)}
+                  className="font-semibold text-neon hover:text-white"
+                >
+                  Already have an account? Log in
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowFacultySignup(true)}
+                  className="font-semibold text-neon hover:text-white"
+                >
+                  New faculty? Sign up here
+                </button>
+              )}
             </div>
-            <div className="relative flex justify-center">
-              <span className="bg-charcoal-50/80 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-500">
-                or sign in with
-              </span>
-            </div>
-          </div>
-
-          {clientId ? (
-            <div className={`flex justify-center ${submitting ? 'pointer-events-none opacity-50' : ''}`}>
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setError('Google sign-in was cancelled or failed.')}
-                theme="filled_black"
-                size="large"
-                text="continue_with"
-                shape="pill"
-                width="320"
-              />
-            </div>
-          ) : (
-            <p className="text-center text-[11px] text-gray-500">
-              Google sign-in unavailable — add{' '}
-              <code className="text-gray-400">VITE_GOOGLE_CLIENT_ID</code> to <code className="text-gray-400">.env</code>
-            </p>
           )}
         </div>
       </div>

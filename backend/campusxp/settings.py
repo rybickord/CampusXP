@@ -3,9 +3,10 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
 
-# Load backend/.env (GOOGLE_CLIENT_ID, etc.)
-_env_file = BASE_DIR / '.env'
+# Load the workspace root .env so Vite and Django share the same credentials.
+_env_file = PROJECT_ROOT / '.env'
 if _env_file.exists():
     for _line in _env_file.read_text(encoding='utf-8').splitlines():
         _line = _line.strip()
@@ -27,6 +28,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'core',
+    'students',
 ]
 
 MIDDLEWARE = [
@@ -83,7 +85,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:5174',
 ]
 
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID') or os.environ.get('VITE_GOOGLE_CLIENT_ID', '')
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': ['rest_framework.renderers.JSONRenderer'],

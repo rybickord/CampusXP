@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { GridBackground } from '../components/layout/GridBackground'
 import { Header } from '../components/layout/Header'
@@ -5,9 +6,32 @@ import { TrustBar } from '../components/layout/TrustBar'
 import { Badge } from '../components/ui/Badge'
 import { StatCard } from '../components/ui/StatCard'
 import { Button } from '../components/ui/Button'
-import { PLATFORM_STATS } from '../data/mockData'
+
+interface LandingStats {
+  students: number
+  events: number
+  xp_awarded: number
+}
 
 export function LandingPage() {
+  const [stats, setStats] = useState<LandingStats>({ students: 0, events: 0, xp_awarded: 0 })
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const res = await fetch('/api/landing-stats/')
+        if (res.ok) {
+          const data = (await res.json()) as LandingStats
+          setStats(data)
+        }
+      } catch {
+        // Keep the zero state if the API is unavailable.
+      }
+    }
+
+    loadStats()
+  }, [])
+
   return (
     <GridBackground>
       <Header />
@@ -30,9 +54,9 @@ export function LandingPage() {
         </p>
 
         <div className="mb-12 flex flex-wrap gap-4">
-          <StatCard label="Students" value={PLATFORM_STATS.students.toLocaleString()} />
-          <StatCard label="Events" value={PLATFORM_STATS.events} />
-          <StatCard label="XP Awarded" value={PLATFORM_STATS.xpAwarded} highlight />
+          <StatCard label="Students" value={stats.students.toLocaleString()} />
+          <StatCard label="Events" value={stats.events.toString()} />
+          <StatCard label="XP Awarded" value={stats.xp_awarded.toLocaleString()} highlight />
         </div>
 
         <Link to="/login">

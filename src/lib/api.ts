@@ -73,15 +73,41 @@ export interface GoogleLoginResponse {
   error?: string
 }
 
+export interface UploadRosterResponse {
+  ok: boolean
+  created: Array<{ prn: string; user: string; password: string }>
+  errors: Array<{ row?: number; prn?: string; error: string }>
+}
+
 export const api = {
   googleLogin: (role: 'student' | 'faculty', credential: string) =>
     post<GoogleLoginResponse>('/api/auth/google/', { role, credential }),
 
-  studentLogin: (prn: string) =>
-    post<StudentLoginResponse>('/api/auth/student/', { prn }),
+  studentLogin: (prn: string, password: string) =>
+    post<StudentLoginResponse>('/api/auth/student/', { prn, password }),
 
-  facultyLogin: (staff_id: string) =>
-    post<{ ok: boolean; role: 'faculty'; staff_id: string; name: string }>('/api/auth/faculty/', { staff_id }),
+  facultyLogin: (staff_id: string, password: string) =>
+    post<{ ok: boolean; role: 'faculty'; staff_id: string; name: string }>('/api/auth/faculty/', { staff_id, password }),
+
+  facultySignup: (payload: {
+    name: string
+    email: string
+    password: string
+    college_name: string
+  }) =>
+    post<{ ok: boolean; role: 'faculty'; staff_id: string; name: string; email: string }>('/api/auth/faculty/signup/', payload),
+
+  uploadRoster: async (formData: FormData): Promise<UploadRosterResponse> => {
+    try {
+      const res = await fetch(`${API_BASE}/api/faculty/upload-roster/`, {
+        method: 'POST',
+        body: formData,
+      })
+      return (await res.json()) as UploadRosterResponse
+    } catch {
+      return { ok: false, created: [], errors: [{ error: 'Network error' }] }
+    }
+  },
 
   createEvent: (payload: {
     staff_id: string

@@ -52,6 +52,13 @@ export function FacultyPortal() {
     () => calculateEventXp(eventLevel, previewRole),
     [eventLevel, previewRole]
   )
+  type RosterUploadRow = { prn: string; user: string; password: string }
+  const [rosterFile, setRosterFile] = useState<File | null>(null)
+  const [uploadingRoster, setUploadingRoster] = useState(false)
+  const [rosterResult, setRosterResult] = useState<{
+    created: RosterUploadRow[]
+    errors: Array<{ row?: number; prn?: string; error: string }>
+  } | null>(null)
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,6 +81,27 @@ export function FacultyPortal() {
       })
     } finally {
       setCreating(false)
+    }
+  }
+  const handleRosterUpload = async () => {
+    if (!rosterFile) return
+    setUploadingRoster(true)
+    setRosterResult(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', rosterFile)
+      fd.append('staff_id', user?.identifier ?? faculty.staffId)
+
+      const data = await api.uploadRoster(fd)
+      if (!data.ok) {
+        alert(data.errors?.[0]?.error || 'Upload failed')
+      } else {
+        setRosterResult({ created: data.created, errors: data.errors || [] })
+      }
+    } catch {
+      alert('Upload failed — check backend is running at :8000')
+    } finally {
+      setUploadingRoster(false)
     }
   }
 
@@ -236,6 +264,92 @@ export function FacultyPortal() {
                   {creating ? 'Generating QR…' : 'Create Event & Generate QR'}
                 </Button>
               </form>
+              <div className="mt-6 rounded-lg border border-charcoal-300 bg-charcoal p-4">
+                <h3 className="mb-2 text-sm font-semibold text-white">Onboard Students via Roster</h3>
+                <p className="mb-3 text-xs text-gray-400">Drag & drop a CSV or Excel (.xlsx) file with columns: Name, PRN, Email</p>
+                <div
+                  className={`mb-4 rounded-2xl border-2 px-4 py-10 text-center transition-colors ${
+                    uploadingRoster
+                      ? 'border-neon/40 bg-neon/5'
+                      : 'border-dashed border-charcoal-400 bg-charcoal/70 hover:border-neon/70'
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'copy'
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const file = e.dataTransfer.files?.[0]
+                    if (file) setRosterFile(file)
+                  }}
+                >
+                  <p className="mb-3 text-sm font-semibold text-white">Drop roster file here</p>
+                  <p className="text-xs text-gray-500">
+                    or click to select a file
+                  </p>
+                  <input
+                    type="file"
+                    accept=".csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={(e) => setRosterFile(e.target.files?.[0] ?? null)}
+                    className="mx-auto mt-4 block cursor-pointer rounded-lg border border-charcoal-400 bg-charcoal px-3 py-2 text-sm text-white"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button size="sm" onClick={handleRosterUpload} disabled={uploadingRoster || !rosterFile}>
+                    {uploadingRoster ? 'Uploading…' : 'Upload Roster'}
+                  </Button>
+                  {rosterFile && (
+                    <span className="text-xs text-gray-400">Selected file: {rosterFile.name}</span>
+                  )}
+                </div>
+
+                {rosterResult && (
+                  <div className="mt-5 space-y-4 text-sm text-gray-300">
+                    <div className="rounded-xl border border-charcoal-600 bg-charcoal p-4">
+                      <p className="font-semibold text-white">Roster upload summary</p>
+                      <p className="text-xs text-gray-400">Created {rosterResult.created.length} student account(s)</p>
+                      <p className="text-xs text-gray-400">Found {rosterResult.errors.length} issue(s)</p>
+                    </div>
+
+                    {rosterResult.created.length > 0 && (
+                      <div className="overflow-x-auto rounded-xl border border-charcoal-600 bg-charcoal p-3 text-xs text-gray-300">
+                        <table className="min-w-full text-left">
+                          <thead>
+                            <tr>
+                              <th className="px-2 py-2 uppercase tracking-wide text-gray-500">PRN</th>
+                              <th className="px-2 py-2 uppercase tracking-wide text-gray-500">Username</th>
+                              <th className="px-2 py-2 uppercase tracking-wide text-gray-500">Password</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rosterResult.created.map((row) => (
+                              <tr key={row.prn} className="border-t border-charcoal-700">
+                                <td className="px-2 py-2 text-white">{row.prn}</td>
+                                <td className="px-2 py-2 text-white">{row.user}</td>
+                                <td className="px-2 py-2 text-neon">{row.password}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {rosterResult.errors.length > 0 && (
+                      <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3 text-xs text-yellow-200">
+                        <p className="font-semibold text-white">Upload issues</p>
+                        <ul className="mt-2 list-disc list-inside space-y-1">
+                          {rosterResult.errors.map((err, i) => (
+                            <li key={i}>
+                              {err.prn ? `${err.prn}: ` : ''}
+                              {err.error}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </section>
 
             <section className="rounded-2xl border border-charcoal-300 bg-charcoal-50/60 p-6 md:p-8">
