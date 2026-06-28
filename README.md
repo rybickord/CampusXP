@@ -26,19 +26,11 @@ Open **http://localhost:5173**
 
 **Student portal**
 - PRN: `BCOM2024042` (any password)
-- Or **Continue with Google** (requires OAuth setup)
 
 **Faculty portal**
 - Staff ID: `FAC-2024-089` (any password)
-- Or **Continue with Google**
 
-## Google OAuth setup
 
-1. [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → Create **OAuth 2.0 Client ID** (Web application)
-2. **Authorized JavaScript origins:** `http://localhost:5173`, `http://127.0.0.1:5173`
-3. Paste the Client ID into both:
-   - `.env` → `VITE_GOOGLE_CLIENT_ID=...`
-   - `backend/.env` → `GOOGLE_CLIENT_ID=...`
 
 ## Scripts
 
