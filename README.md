@@ -21,7 +21,7 @@ npm run dev:all
 ```
 
 Open **http://localhost:5173**
-
+Open **http://10.204.50.6:5173**
 ## Login
 
 **Student portal**
